@@ -1,8 +1,10 @@
-package com.example.easybackup.controllers;
+package com.example.easybackup;
 
-import com.example.easybackup.TaskListener;
 import com.example.easybackup.dialogs.CopyConfirmationDialog;
 import com.example.easybackup.threads.CopyThread;
+import com.example.easybackup.threads.ListFilesThread;
+import javafx.application.Platform;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.Pane;
@@ -12,6 +14,8 @@ import javafx.util.Pair;
 
 import java.io.File;
 import java.util.Optional;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class EasyBackupController implements TaskListener {
     @FXML
@@ -23,11 +27,7 @@ public class EasyBackupController implements TaskListener {
     @FXML
     private Pane mainPanel;
     @FXML
-    private Button searchButtonOrigin;
-    @FXML
     private TextField targetPath;
-    @FXML
-    private Button searchButtonTarget;
     @FXML
     private TreeView<String> originFileList;
     @FXML
@@ -35,55 +35,52 @@ public class EasyBackupController implements TaskListener {
     @FXML
     private TreeView<String> targetFileList;
     @FXML
-    private Button copyButton;
-    @FXML
-    private Button checkButton;
-    @FXML
     private ProgressIndicator checkProgressIndicator;
     @FXML
     private TextField originPath;
 
     private final DirectoryChooser dirChooser = new DirectoryChooser();
     private CopyThread copyThread;
-
-    /**
-     * array for count the items in origin and target folders.
-     * pos 0 for origin files count,
-     * pos 1 for target files count.
-     */
-    private final int[] itemsCounter = new int[2];
+    private ListFilesThread listFilesThread;
+    private Timer progressBarUpdateTimer;
     private double backupSize;
-
+    private int filesInOrigin;
 
     @FXML
     private void onOriginSearchButtonClick() {
-        Window window = mainPanel.getScene().getWindow();
-        File selectedFolder = dirChooser.showDialog(window);
-        if (selectedFolder != null) {
-            originPath.setText(selectedFolder.getPath());
-            TreeItem<String> root = new TreeItem<>(selectedFolder.getName());
-            originFileList.setRoot(root);
-            itemsCounter[0] = 0;
-            listFiles(selectedFolder.listFiles(), root, 0, true);
-            originFilesCountLabel.setText(String.valueOf(itemsCounter[0]));
-        } else {
-            errorsBox.appendText("La carpeta seleccionada no existe\n");
+        try {
+            Window window = mainPanel.getScene().getWindow();
+            File selectedFolder = dirChooser.showDialog(window);
+            if (selectedFolder != null) {
+                originPath.setText(selectedFolder.getPath());
+                TreeItem<String> root = new TreeItem<>(selectedFolder.getName());
+                listFilesThread = new ListFilesThread(selectedFolder.listFiles(), root, 0);
+                listFilesThread.setListener(this);
+                listFilesThread.run();
+            } else {
+                errorsBox.appendText("La carpeta seleccionada no existe\n");
+            }
+        } catch (Exception e) {
+            errorsBox.appendText('\n' + e.getMessage());
         }
     }
 
     @FXML
     private void onTargetSearchButtonClick() {
-        Window window = mainPanel.getScene().getWindow();
-        File selectedFolder = dirChooser.showDialog(window);
-        if (selectedFolder != null) {
-            targetPath.setText(selectedFolder.getPath());
-            TreeItem<String> root = new TreeItem<>(selectedFolder.getName());
-            targetFileList.setRoot(root);
-            itemsCounter[1] = 0;
-            listFiles(selectedFolder.listFiles(), root, 1, false);
-            targetFilesCountLabel.setText(String.valueOf(itemsCounter[1]));
-        } else {
-            errorsBox.appendText("La carpeta seleccionada no existe\n");
+        try {
+            Window window = mainPanel.getScene().getWindow();
+            File selectedFolder = dirChooser.showDialog(window);
+            if (selectedFolder != null) {
+                targetPath.setText(selectedFolder.getPath());
+                TreeItem<String> root = new TreeItem<>(selectedFolder.getName());
+                listFilesThread = new ListFilesThread(selectedFolder.listFiles(), root, 1);
+                listFilesThread.setListener(this);
+                listFilesThread.run();
+            } else {
+                errorsBox.appendText("La carpeta seleccionada no existe\n");
+            }
+        } catch (Exception e) {
+            errorsBox.appendText('\n' + e.getMessage());
         }
     }
 
@@ -100,9 +97,22 @@ public class EasyBackupController implements TaskListener {
                 String defaultFolderName = "Respaldo de " + originFolder.getName();
                 Dialog<Pair<String, Boolean>> copyConfirmationDialog = CopyConfirmationDialog.createDialog(defaultFolderName, sizeText);
                 Optional<Pair<String, Boolean>> dialogResult = copyConfirmationDialog.showAndWait();
+                progressBarUpdateTimer = new Timer();
+                progressBarUpdateTimer.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        Platform.runLater(() -> {
+                            int elementsCopied = CopyThread.getFilesCopiedValue();
+                            double progress = (double) elementsCopied / filesInOrigin;
+                            copyProgressBar.setProgress(progress);
+                        });
+                    }
+                }, 0, 1);
                 dialogResult.ifPresent(result -> {
                     // COPIAR
                     copyThread = new CopyThread(originFolder, targetFolder, result.getKey(), result.getValue());
+                    copyThread.setListener(this);
+                    copyThread.run();
                 });
 
             } else {
@@ -117,49 +127,113 @@ public class EasyBackupController implements TaskListener {
         }
     }
 
-    /**
-     * @param files            folder with the files to list in the TreeView.
-     * @param parentFolderItem TreeItem's parent to append the child file.
-     * @param posToIncrement   index of the item counter in the array of files counters.
-     */
-    private void listFiles(File[] files, TreeItem<String> parentFolderItem, int posToIncrement, boolean cleanBackupSizeCounter) {
+    @FXML
+    private void originTextFieldOnEnterKey() {
         try {
-            if (cleanBackupSizeCounter) {
-                backupSize = 0;
+            File pathWritten = new File(originPath.getText());
+            if (pathWritten.exists() && pathWritten.isDirectory()) {
+                TreeItem<String> newRoot = new TreeItem<>(pathWritten.getName());
+                listFilesThread = new ListFilesThread(pathWritten.listFiles(), newRoot, 0);
+                listFilesThread.setListener(this);
+                listFilesThread.run();
+            } else {
+                if (!pathWritten.exists()) {
+                    throw new Exception("El path ingresado no existe.");
+                } else if (!pathWritten.isDirectory()) {
+                    throw new Exception("El path ingresado no hace referencia a una carpeta.");
+                }
             }
-            for (File file : files) {
-                itemsCounter[posToIncrement]++;
-                if (file.isDirectory()) {
-                    TreeItem<String> parent = new TreeItem<>(file.getName());
-                    parentFolderItem.getChildren().add(parent);
-                    File[] fileFiles = file.listFiles();
-                    if (fileFiles != null) {
-                        listFiles(fileFiles, parent, posToIncrement, false);
-                    }
-                } else {
-                    if (posToIncrement == 0) {
-                        backupSize += file.length();
-                    }
-                    parentFolderItem.getChildren().add(new TreeItem<>("> " + file.getName()));
+
+        } catch (Exception e) {
+            errorsBox.appendText('\n' + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void targetTextFieldOnEnterKey() {
+        try {
+            File targetPathWritten = new File(targetPath.getText());
+            if (targetPathWritten.exists() && targetPathWritten.isDirectory()) {
+                TreeItem<String> newRoot = new TreeItem<>(targetPathWritten.getName());
+                listFilesThread = new ListFilesThread(targetPathWritten.listFiles(), newRoot, 1);
+                listFilesThread.setListener(this);
+                listFilesThread.run();
+            } else {
+                if (!targetPathWritten.exists()) {
+                    throw new Exception("El path ingresado no existe.");
+                } else if (!targetPathWritten.isDirectory()) {
+                    throw new Exception("El path ingresado no hace referencia a una carpeta.");
                 }
             }
         } catch (Exception e) {
-            errorsBox.appendText(e.getMessage() + "\n");
+            errorsBox.appendText('\n' + e.getMessage());
         }
     }
 
     @Override
-    public void threadCompleteExecution(Runnable thread, boolean executionResult) {
+    public void threadCompleteExecution(Runnable thread, boolean executionResult, Object threadObject) {
+        try {
+            if (threadObject.getClass() == CopyThread.class) {
+                onFinishCopyThread(executionResult);
+            } else if (threadObject.getClass() == ListFilesThread.class) {
+                onFinishListFilesThread((ListFilesThread) threadObject);
+            }
+        } catch (Exception e) {
+            errorsBox.appendText('\n' + e.getMessage());
+        }
+    }
+
+    private void onFinishCopyThread(boolean executionResult) {
+        progressBarUpdateTimer.cancel();
+        progressBarUpdateTimer.purge();
         Alert copyResult = new Alert(Alert.AlertType.INFORMATION);
         copyResult.setTitle("Copy result information");
         copyResult.setHeaderText("Information about the copy process");
         if (executionResult) {
-            copyResult.setContentText("The copy was successful!");
+            copyResult.setContentText("The copy was successful!\n\t(" + CopyThread.getFilesCopiedValue() + " elements copied)");
         } else {
-            copyResult.setContentText("Something went wrong :(\n" +
-                    "Consult the errors box!\n" +
-                    "or the developer...");
+            copyResult.setContentText("""
+                    Something went wrong :(
+                    Consult the errors box!
+                    \tor the developer...""");
         }
-        copyResult.show();
+        copyProgressBar.setProgress(1.0);
+        File targetFolder = new File(targetPath.getText());
+        TreeItem<String> newRoot = new TreeItem<>(targetFolder.getName());
+        listFilesThread = new ListFilesThread(targetFolder.listFiles(), newRoot, 1);
+        listFilesThread.setListener(this);
+        listFilesThread.run();
+        copyResult.showAndWait();
+        copyProgressBar.setProgress(0);
     }
+
+    private void onFinishListFilesThread(ListFilesThread threadObject) {
+        boolean isOriginFilesView = threadObject.getPosIncremented() == 0;
+        if (isOriginFilesView) {
+            originFileList.setRoot(threadObject.getTreeViewRoot());
+            int foldersCount = threadObject.getFoldersCount();
+            int filesCount = threadObject.getFilesCount();
+            originFilesCountLabel.setText("Carpetas: " + foldersCount + " | Archivos: " + filesCount);
+            filesInOrigin = filesCount;
+        } else {
+            int foldersCount = threadObject.getFoldersCount();
+            int filesCount = threadObject.getFilesCount();
+            targetFileList.setRoot(threadObject.getTreeViewRoot());
+            targetFilesCountLabel.setText("Carpetas: " + foldersCount + " | Archivos: " + filesCount);
+        }
+    }
+
+    @Override
+    public void setBackupSize(double value) {
+        if (value >= 0) {
+            backupSize = value;
+        }
+    }
+
+    @Override
+    public void appendErrors(StringBuilder errors) {
+        errorsBox.appendText(errors.toString());
+    }
+
+
 }

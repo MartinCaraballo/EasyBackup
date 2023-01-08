@@ -1,9 +1,31 @@
-#copyButton:hover {
-    -fx-background-color: -fx-shadow-highlight-color, -fx-outer-border, -fx-inner-border, -fx-body-color;
-    -fx-background-insets: 0 0 -1 0, 0, 1, 2;
-    -fx-background-radius: 3px, 3px, 2px, 1px;
-    -fx-padding: 0.333333em 0.666667em 0.333333em 0.666667em; /* 4 8 4 8 */
-    -fx-text-fill: -fx-text-base-color;
-    -fx-alignment: CENTER;
-    -fx-content-display: LEFT;
+#copyButton,
+#checkButton,
+#searchButtonOrigin,
+#searchButtonTarget {
+    -fx-background-color: #2C666E;
+    -fx-background-radius: 120;
+}
+
+#copyButton:hover,
+#checkButton:hover,
+#searchButtonOrigin:hover,
+#searchButtonTarget:hover {
+    -fx-background-color: #39757F;
+}
+
+#checkProgressIndicator .percentage {
+    -fx-fill: BLACK;
+    -fx-font-family: "Segoe UI Black";
+    -fx-font-size: 14;
+}
+
+#errorsBox {
+    -fx-background-color: #07393C;
+    -fx-text-fill: RED;
+    -fx-border-color: #2C666E;
+    -fx-border-width: 2px;
+}
+
+#errorsBox .content {
+    -fx-background-color: #07393C;
 }

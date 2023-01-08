@@ -1,16 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
 
-<?import javafx.scene.control.Button?>
-<VBox alignment="CENTER" spacing="20.0" xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.example.easybackup.EasyBackupController">
-    <padding>
-        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
-    </padding>
-
-    <Label fx:id="welcomeText"/>
-    <Button text="Hello!" onAction="#onHelloButtonClick"/>
-</VBox>
+<Pane fx:id="mainPanel" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="615.0" prefWidth="814.0" style="-fx-background-color: #07393C;" stylesheets="@EasyBackupStyles.css" xmlns="http://javafx.com/javafx/11.0.14-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.easybackup.EasyBackupController">
+    <Label layoutX="44.0" layoutY="35.0" text="Origen:" textFill="WHITE">
+        <font>
+            <Font name="Segoe UI Semibold" size="13.0" />
+        </font>
+    </Label>
+    <TextField fx:id="originPath" layoutX="117.0" layoutY="31.0" prefHeight="25.0" prefWidth="566.0" onAction="#originTextFieldOnEnterKey">
+        <font>
+            <Font name="Segoe UI Semibold" size="13.0" />
+        </font>
+    </TextField>
+    <Button fx:id="searchButtonOrigin" layoutX="714.0" layoutY="31.0" mnemonicParsing="false" onAction="#onOriginSearchButtonClick" text="Buscar" textFill="WHITE">
+        <font>
+            <Font name="Segoe UI Semibold" size="13.0" />
+        </font>
+        <cursor>
+            <Cursor fx:constant="HAND" />
+        </cursor>
+    </Button>
+    <Label layoutX="41.0" layoutY="80.0" text="Destino:" textFill="WHITE">
+        <font>
+            <Font name="Segoe UI Semibold" size="13.0" />
+        </font>
+    </Label>
+    <TextField fx:id="targetPath" layoutX="117.0" layoutY="76.0" prefHeight="25.0" prefWidth="566.0" onAction="#targetTextFieldOnEnterKey">
+        <font>
+            <Font name="Segoe UI Semibold" size="13.0" />
+        </font>
+    </TextField>
+    <Button fx:id="searchButtonTarget" layoutX="714.0" layoutY="76.0" mnemonicParsing="false" onAction="#onTargetSearchButtonClick" text="Buscar" textFill="WHITE">
+        <font>
+            <Font name="Segoe UI Semibold" size="13.0" />
+        </font>
+        <cursor>
+            <Cursor fx:constant="HAND" />
+        </cursor>
+    </Button>
+    <ProgressBar fx:id="copyProgressBar" layoutX="16.0" layoutY="580.0" prefHeight="18.0" prefWidth="783.0" progress="0.0" />
+    <Label layoutX="16.0" layoutY="563.0" text="Progreso:" textFill="WHITE">
+        <font>
+            <Font name="Segoe UI Semibold" size="13.0" />
+        </font>
+    </Label>
+    <Label layoutX="41.0" layoutY="147.0" text="Archivos en el origen:" textFill="WHITE">
+        <font>
+            <Font name="Segoe UI Semibold" size="13.0" />
+        </font>
+    </Label>
+    <Label layoutX="492.0" layoutY="147.0" text="Archivos en el destino:" textFill="WHITE">
+        <font>
+            <Font name="Segoe UI Semibold" size="13.0" />
+        </font>
+    </Label>
+    <Button fx:id="copyButton" layoutX="363.0" layoutY="282.0" mnemonicParsing="false" onAction="#onCopyButtonClick" prefHeight="27.0" prefWidth="82.0" text="COPIAR" textFill="WHITE">
+        <font>
+            <Font name="Segoe UI Semibold" size="13.0" />
+        </font>
+        <cursor>
+            <Cursor fx:constant="HAND" />
+        </cursor>
+    </Button>
+    <Button fx:id="checkButton" layoutX="363.0" layoutY="317.0" mnemonicParsing="false" text="CHECKEAR" textFill="WHITE">
+        <font>
+            <Font name="Segoe UI Semibold" size="13.0" />
+        </font>
+        <cursor>
+            <Cursor fx:constant="HAND" />
+        </cursor>
+    </Button>
+    <Label fx:id="originFilesCountLabel" layoutX="176.0" layoutY="147.0" text="0" textFill="WHITE">
+        <font>
+            <Font name="Segoe UI Semibold" size="13.0" />
+        </font>
+    </Label>
+    <Label fx:id="targetFilesCountLabel" layoutX="631.0" layoutY="147.0" text="0" textFill="WHITE">
+        <font>
+            <Font name="Segoe UI Semibold" size="13.0" />
+        </font>
+    </Label>
+    <ProgressIndicator fx:id="checkProgressIndicator" layoutX="386.0" layoutY="295.0" progress="0.0" visible="false" />
+   <TreeView fx:id="originFileList" layoutX="41.0" layoutY="166.0" prefHeight="301.0" prefWidth="282.0" />
+   <TreeView fx:id="targetFileList" layoutX="492.0" layoutY="166.0" prefHeight="301.0" prefWidth="282.0" />
+   <TextArea fx:id="errorsBox" editable="false" layoutX="41.0" layoutY="482.0" prefHeight="73.0" prefWidth="735.0">
+      <font>
+         <Font name="Segoe UI Semibold" size="12.0" />
+      </font>
+   </TextArea>
+</Pane>

@@ -1,4 +1,4 @@
-package com.example.easybackup.views;
+package com.example.easybackup;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
