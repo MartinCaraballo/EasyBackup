@@ -15,7 +15,5 @@ public interface TaskListener {
      */
     void threadCompleteExecution(Runnable thread, boolean executionResult, Object threadObject);
 
-    void setBackupSize(double value);
-
-    void appendErrors(StringBuilder errors);
+    void appendErrors(String error);
 }

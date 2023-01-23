@@ -14,7 +14,7 @@ public class CopyConfirmationDialog {
      * @param backupSize
      * @return
      */
-    public static Dialog<Pair<String, Boolean>> createDialog(String defaultFolderName, String backupSize) {
+    public static Dialog<Pair<String, Boolean>> createDialog(String defaultFolderName, String backupSize, int itemsToCopyNumber) {
         Dialog<Pair<String, Boolean>> dialog = new Dialog<>();
         dialog.setTitle("Confirmación");
         GridPane grid = new GridPane();
@@ -26,6 +26,7 @@ public class CopyConfirmationDialog {
         dialog.getDialogPane().getStyleClass().add("dialog");
 
         Label sizeLabel = new Label(backupSize);
+        Label itemsCountLabel = new Label(itemsToCopyNumber + " ARCHIVOS.");
         ToggleButton separate = new ToggleButton("NO SEPARAR");
         TextField folderName = new TextField(defaultFolderName);
         ButtonType continueButton = new ButtonType("CONTINUAR", ButtonBar.ButtonData.OK_DONE);
@@ -38,6 +39,8 @@ public class CopyConfirmationDialog {
         grid.add(separate, 1, 1);
         grid.add(new Label("TAMAÑO DEL RESPALDO: "), 0, 2);
         grid.add(sizeLabel, 1, 2);
+        grid.add(new Label("CANTIDAD DE ELEMENTOS: "), 0, 3);
+        grid.add(itemsCountLabel, 1, 3);
 
         Window window = dialog.getDialogPane().getScene().getWindow();
         window.setOnCloseRequest(windowEvent -> {

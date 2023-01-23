@@ -1,10 +1,11 @@
 package com.example.easybackup;
 
+import com.example.easybackup.dialogs.CheckFilesResultDialog;
 import com.example.easybackup.dialogs.CopyConfirmationDialog;
+import com.example.easybackup.threads.CheckFilesThread;
 import com.example.easybackup.threads.CopyThread;
 import com.example.easybackup.threads.ListFilesThread;
 import javafx.application.Platform;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.Pane;
@@ -13,6 +14,7 @@ import javafx.stage.Window;
 import javafx.util.Pair;
 
 import java.io.File;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -42,6 +44,7 @@ public class EasyBackupController implements TaskListener {
     private final DirectoryChooser dirChooser = new DirectoryChooser();
     private CopyThread copyThread;
     private ListFilesThread listFilesThread;
+    private CheckFilesThread checkFilesThread;
     private Timer progressBarUpdateTimer;
     private double backupSize;
     private int filesInOrigin;
@@ -56,12 +59,12 @@ public class EasyBackupController implements TaskListener {
                 TreeItem<String> root = new TreeItem<>(selectedFolder.getName());
                 listFilesThread = new ListFilesThread(selectedFolder.listFiles(), root, 0);
                 listFilesThread.setListener(this);
-                listFilesThread.run();
+                listFilesThread.start();
             } else {
                 errorsBox.appendText("La carpeta seleccionada no existe\n");
             }
         } catch (Exception e) {
-            errorsBox.appendText('\n' + e.getMessage());
+            errorsBox.appendText(e.getMessage() + '\n');
         }
     }
 
@@ -75,12 +78,12 @@ public class EasyBackupController implements TaskListener {
                 TreeItem<String> root = new TreeItem<>(selectedFolder.getName());
                 listFilesThread = new ListFilesThread(selectedFolder.listFiles(), root, 1);
                 listFilesThread.setListener(this);
-                listFilesThread.run();
+                listFilesThread.start();
             } else {
-                errorsBox.appendText("La carpeta seleccionada no existe\n");
+                errorsBox.appendText("La carpeta seleccionada no existe.\n");
             }
         } catch (Exception e) {
-            errorsBox.appendText('\n' + e.getMessage());
+            errorsBox.appendText(e.getMessage() + '\n');
         }
     }
 
@@ -94,8 +97,8 @@ public class EasyBackupController implements TaskListener {
                 String sizeText = folderSize >= 1024
                         ? Math.round(folderSize / 1024) + " GB."
                         : Math.round(folderSize) + " MB.";
-                String defaultFolderName = "Respaldo de " + originFolder.getName();
-                Dialog<Pair<String, Boolean>> copyConfirmationDialog = CopyConfirmationDialog.createDialog(defaultFolderName, sizeText);
+                String defaultFolderName = "Respaldo de CD " + originFolder.getName();
+                Dialog<Pair<String, Boolean>> copyConfirmationDialog = CopyConfirmationDialog.createDialog(defaultFolderName, sizeText, filesInOrigin);
                 Optional<Pair<String, Boolean>> dialogResult = copyConfirmationDialog.showAndWait();
                 progressBarUpdateTimer = new Timer();
                 progressBarUpdateTimer.schedule(new TimerTask() {
@@ -107,12 +110,12 @@ public class EasyBackupController implements TaskListener {
                             copyProgressBar.setProgress(progress);
                         });
                     }
-                }, 0, 1);
+                }, 0, 10);
                 dialogResult.ifPresent(result -> {
                     // COPIAR
                     copyThread = new CopyThread(originFolder, targetFolder, result.getKey(), result.getValue());
                     copyThread.setListener(this);
-                    copyThread.run();
+                    copyThread.start();
                 });
 
             } else {
@@ -123,7 +126,35 @@ public class EasyBackupController implements TaskListener {
                 errorAlert.show();
             }
         } catch (Exception e) {
-            errorsBox.appendText(e.getMessage() + "\n");
+            errorsBox.appendText(e.getMessage() + '\n');
+        }
+    }
+
+    @FXML
+    private void onCheckButtonClick() {
+        try {
+            checkProgressIndicator.setVisible(true);
+            checkProgressIndicator.setProgress(-1d);
+            File[] filesInOriginArray = new File(originPath.getText()).listFiles();
+            File[] filesInTargetArray = new File(targetPath.getText()).listFiles();
+            if ((filesInOriginArray != null && filesInTargetArray != null)
+                    && (filesInOriginArray.length > 0 && filesInTargetArray.length > 0)) {
+                checkFilesThread = new CheckFilesThread(filesInOriginArray, filesInTargetArray);
+                checkFilesThread.setListener(this);
+                checkFilesThread.start();
+            } else {
+                if (filesInOriginArray == null) {
+                    throw new Exception("La ruta de origen no hace referencia a un directorio.");
+                } else if (filesInTargetArray == null) {
+                    throw new Exception("La ruta de destino no hace referencia a un directorio.");
+                } else if (filesInOriginArray.length == 0) {
+                    throw new Exception("El directorio de origen no contiene elementos.");
+                } else if (filesInTargetArray.length == 0) {
+                    throw new Exception("El directorio de destino no contiene elementos.");
+                }
+            }
+        } catch (Exception e) {
+            errorsBox.appendText(e.getMessage() + '\n');
         }
     }
 
@@ -135,7 +166,7 @@ public class EasyBackupController implements TaskListener {
                 TreeItem<String> newRoot = new TreeItem<>(pathWritten.getName());
                 listFilesThread = new ListFilesThread(pathWritten.listFiles(), newRoot, 0);
                 listFilesThread.setListener(this);
-                listFilesThread.run();
+                listFilesThread.start();
             } else {
                 if (!pathWritten.exists()) {
                     throw new Exception("El path ingresado no existe.");
@@ -143,9 +174,8 @@ public class EasyBackupController implements TaskListener {
                     throw new Exception("El path ingresado no hace referencia a una carpeta.");
                 }
             }
-
         } catch (Exception e) {
-            errorsBox.appendText('\n' + e.getMessage());
+            errorsBox.appendText(e.getMessage() + '\n');
         }
     }
 
@@ -157,7 +187,7 @@ public class EasyBackupController implements TaskListener {
                 TreeItem<String> newRoot = new TreeItem<>(targetPathWritten.getName());
                 listFilesThread = new ListFilesThread(targetPathWritten.listFiles(), newRoot, 1);
                 listFilesThread.setListener(this);
-                listFilesThread.run();
+                listFilesThread.start();
             } else {
                 if (!targetPathWritten.exists()) {
                     throw new Exception("El path ingresado no existe.");
@@ -166,50 +196,59 @@ public class EasyBackupController implements TaskListener {
                 }
             }
         } catch (Exception e) {
-            errorsBox.appendText('\n' + e.getMessage());
+            errorsBox.appendText(e.getMessage() + '\n');
         }
     }
 
     @Override
     public void threadCompleteExecution(Runnable thread, boolean executionResult, Object threadObject) {
         try {
-            if (threadObject.getClass() == CopyThread.class) {
-                onFinishCopyThread(executionResult);
-            } else if (threadObject.getClass() == ListFilesThread.class) {
-                onFinishListFilesThread((ListFilesThread) threadObject);
-            }
+            Platform.runLater(() -> {
+                if (threadObject.getClass() == CopyThread.class) {
+                    onFinishCopyThread(executionResult, (CopyThread) threadObject);
+                } else if (threadObject.getClass() == ListFilesThread.class) {
+                    onFinishListFilesThread((ListFilesThread) threadObject);
+                } else if (threadObject.getClass() == CheckFilesThread.class) {
+                    onFinishCheckFilesThread((CheckFilesThread) threadObject);
+                }
+            });
         } catch (Exception e) {
-            errorsBox.appendText('\n' + e.getMessage());
+            errorsBox.appendText(e.getMessage() + '\n');
         }
     }
 
-    private void onFinishCopyThread(boolean executionResult) {
-        progressBarUpdateTimer.cancel();
-        progressBarUpdateTimer.purge();
-        Alert copyResult = new Alert(Alert.AlertType.INFORMATION);
-        copyResult.setTitle("Copy result information");
-        copyResult.setHeaderText("Information about the copy process");
-        if (executionResult) {
-            copyResult.setContentText("The copy was successful!\n\t(" + CopyThread.getFilesCopiedValue() + " elements copied)");
-        } else {
-            copyResult.setContentText("""
-                    Something went wrong :(
-                    Consult the errors box!
-                    \tor the developer...""");
+    private void onFinishCopyThread(boolean executionResult, CopyThread copyThread) {
+        try {
+            progressBarUpdateTimer.cancel();
+            progressBarUpdateTimer.purge();
+            Alert copyResult = new Alert(Alert.AlertType.INFORMATION);
+            copyResult.setTitle("Copy result information");
+            copyResult.setHeaderText("Information about the copy process");
+            if (executionResult) {
+                copyResult.setContentText("The copy was successful!\n\t(" + CopyThread.getFilesCopiedValue() + " elements copied)");
+            } else {
+                copyResult.setContentText("""
+                        Something went wrong :(
+                        Consult the errors box!
+                        \tor the developer...""");
+            }
+            copyProgressBar.setProgress(1.0);
+            File targetFolder = copyThread.getTargetFile();
+            TreeItem<String> newRoot = new TreeItem<>(targetFolder.getName());
+            listFilesThread = new ListFilesThread(targetFolder.listFiles(), newRoot, 1);
+            listFilesThread.setListener(this);
+            listFilesThread.start();
+            copyResult.showAndWait();
+            copyProgressBar.setProgress(0);
+        } catch (Exception e) {
+            errorsBox.appendText(e.getMessage() + '\n');
         }
-        copyProgressBar.setProgress(1.0);
-        File targetFolder = new File(targetPath.getText());
-        TreeItem<String> newRoot = new TreeItem<>(targetFolder.getName());
-        listFilesThread = new ListFilesThread(targetFolder.listFiles(), newRoot, 1);
-        listFilesThread.setListener(this);
-        listFilesThread.run();
-        copyResult.showAndWait();
-        copyProgressBar.setProgress(0);
     }
 
     private void onFinishListFilesThread(ListFilesThread threadObject) {
-        boolean isOriginFilesView = threadObject.getPosIncremented() == 0;
+        boolean isOriginFilesView = threadObject.getViewIndex() == 0;
         if (isOriginFilesView) {
+            backupSize = threadObject.getBackupSize();
             originFileList.setRoot(threadObject.getTreeViewRoot());
             int foldersCount = threadObject.getFoldersCount();
             int filesCount = threadObject.getFilesCount();
@@ -223,17 +262,29 @@ public class EasyBackupController implements TaskListener {
         }
     }
 
-    @Override
-    public void setBackupSize(double value) {
-        if (value >= 0) {
-            backupSize = value;
+    private void onFinishCheckFilesThread(CheckFilesThread checkFilesThread) {
+        try {
+            checkProgressIndicator.setProgress(0d);
+            checkProgressIndicator.setVisible(false);
+            Map<String, File> filesNotFound = checkFilesThread.getFilesNotFound();
+            if (!filesNotFound.isEmpty()) {
+                Dialog<String> checkFilesFinishDialog = CheckFilesResultDialog.createDialog(filesNotFound);
+                checkFilesFinishDialog.show();
+            } else {
+                Alert finishCheckAlert = new Alert(Alert.AlertType.INFORMATION);
+                finishCheckAlert.setTitle("Resultado del checkeo");
+                finishCheckAlert.setHeaderText("Checkeo finalizado con éxito");
+                finishCheckAlert.setContentText("Todos los archivos del origen se encuentran en el destino.");
+                finishCheckAlert.show();
+            }
+        } catch (Exception e) {
+            errorsBox.appendText(e.getMessage() + '\n');
         }
     }
 
     @Override
-    public void appendErrors(StringBuilder errors) {
-        errorsBox.appendText(errors.toString());
+    public void appendErrors(String error) {
+        errorsBox.appendText(error);
     }
-
 
 }

@@ -1,7 +1,6 @@
 package com.example.easybackup.threads;
 
 import com.example.easybackup.NotificationThread;
-import com.example.easybackup.TaskListener;
 import javafx.scene.control.TreeItem;
 import javafx.util.Pair;
 
@@ -11,20 +10,20 @@ public class ListFilesThread extends NotificationThread {
     private double backupSize;
     private int filesCount;
     private int foldersCount;
-    private final StringBuilder errorsBox = new StringBuilder("ERRORES DURANTE EL LISTADO DE ARCHIVOS:");
 
     private final File[] FILES;
     private final TreeItem<String> ROOT_ITEM;
-    private final int POS_TO_INCREMENT;
+    private final int VIEW_INDEX;
 
-    public ListFilesThread(File[] filesToList, TreeItem<String> rootItem, int posToIncrement) {
+    public ListFilesThread(File[] filesToList, TreeItem<String> rootItem, int viewIndex) {
         FILES = filesToList;
         ROOT_ITEM = rootItem;
-        POS_TO_INCREMENT = posToIncrement;
+        VIEW_INDEX = viewIndex;
     }
 
-    public int getPosIncremented() {
-        return POS_TO_INCREMENT;
+
+    public int getViewIndex() {
+        return VIEW_INDEX;
     }
 
     public TreeItem<String> getTreeViewRoot() {
@@ -39,23 +38,24 @@ public class ListFilesThread extends NotificationThread {
         return filesCount;
     }
 
+    public double getBackupSize() {
+        return backupSize;
+    }
+
 
     @Override
     public Pair<Boolean, Object> doWork() {
-        boolean result = listFiles(FILES, ROOT_ITEM, POS_TO_INCREMENT);
-        TaskListener listener = getListener();
-        if (POS_TO_INCREMENT == 0) {
-            listener.setBackupSize(backupSize);
-        }
+        boolean result = listFiles(FILES, ROOT_ITEM, VIEW_INDEX);
         return new Pair<>(result, this);
     }
 
     /**
      * @param files            folder with the files to list in the TreeView.
      * @param parentFolderItem TreeItem's parent to append the child file.
-     * @param posToIncrement   index of the item counter in the array of files counters.
+     * @param viewIndex        0 for origin list, 1 for target list.
+     * @return true if OK, false if it not does.
      */
-    private boolean listFiles(File[] files, TreeItem<String> parentFolderItem, int posToIncrement) {
+    private boolean listFiles(File[] files, TreeItem<String> parentFolderItem, int viewIndex) {
         try {
             for (File file : files) {
                 if (file.isDirectory()) {
@@ -64,11 +64,11 @@ public class ListFilesThread extends NotificationThread {
                     parentFolderItem.getChildren().add(parent);
                     File[] fileFiles = file.listFiles();
                     if (fileFiles != null) {
-                        listFiles(fileFiles, parent, posToIncrement);
+                        listFiles(fileFiles, parent, viewIndex);
                     }
                 } else {
                     filesCount++;
-                    if (posToIncrement == 0) {
+                    if (viewIndex == 0) {
                         backupSize += file.length();
                     }
                     parentFolderItem.getChildren().add(new TreeItem<>("» " + file.getName()));
@@ -76,9 +76,9 @@ public class ListFilesThread extends NotificationThread {
             }
             return true;
         } catch (Exception e) {
-            errorsBox.append("\n").append(e.getMessage());
-            getListener().appendErrors(errorsBox);
+            getListener().appendErrors(e.getMessage() + '\n');
         }
         return false;
     }
+
 }

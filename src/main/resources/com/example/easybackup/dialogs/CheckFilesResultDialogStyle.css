@@ -1,0 +1,20 @@
+.dialog {
+    -fx-background-color: #07393C;
+}
+
+.label {
+    -fx-text-fill: WHITE;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-font-size: 13;
+}
+
+.button {
+    -fx-background-color: #2C666E;
+    -fx-background-radius: 120;
+    -fx-text-fill: WHITE;
+    -fx-font-family: "Segoe UI Semibold";
+}
+
+.button:hover {
+    -fx-background-color: #39757F;
+}

@@ -2,7 +2,7 @@ package com.example.easybackup;
 
 import javafx.util.Pair;
 
-public abstract class NotificationThread implements Runnable {
+public abstract class NotificationThread extends Thread {
 
     private TaskListener listener;
 

@@ -1,6 +1,7 @@
 module com.example.easybackup {
     requires javafx.controls;
     requires javafx.fxml;
+    requires java.desktop;
 
 
     opens com.example.easybackup to javafx.fxml;
