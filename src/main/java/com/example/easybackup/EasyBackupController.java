@@ -6,6 +6,8 @@ import com.example.easybackup.threads.CheckFilesThread;
 import com.example.easybackup.threads.CopyThread;
 import com.example.easybackup.threads.ListFilesThread;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.Pane;
@@ -16,10 +18,10 @@ import javafx.util.Pair;
 import java.io.File;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class EasyBackupController implements TaskListener {
+    @FXML
+    private Label progressBarLabel;
     @FXML
     private TextArea errorsBox;
     @FXML
@@ -44,8 +46,6 @@ public class EasyBackupController implements TaskListener {
     private final DirectoryChooser dirChooser = new DirectoryChooser();
     private CopyThread copyThread;
     private ListFilesThread listFilesThread;
-    private CheckFilesThread checkFilesThread;
-    private Timer progressBarUpdateTimer;
     private double backupSize;
     private int filesInOrigin;
 
@@ -53,15 +53,15 @@ public class EasyBackupController implements TaskListener {
     private void onOriginSearchButtonClick() {
         try {
             Window window = mainPanel.getScene().getWindow();
-            File selectedFolder = dirChooser.showDialog(window);
-            if (selectedFolder != null) {
-                originPath.setText(selectedFolder.getPath());
-                TreeItem<String> root = new TreeItem<>(selectedFolder.getName());
-                listFilesThread = new ListFilesThread(selectedFolder.listFiles(), root, 0);
+            File selectedFile = dirChooser.showDialog(window);
+            if (selectedFile != null) {
+                originPath.setText(selectedFile.getPath());
+                TreeItem<String> root = new TreeItem<>(selectedFile.getName());
+                listFilesThread = new ListFilesThread(selectedFile.listFiles(), root, 0);
                 listFilesThread.setListener(this);
                 listFilesThread.start();
             } else {
-                errorsBox.appendText("La carpeta seleccionada no existe\n");
+                errorsBox.appendText("Se debe seleccionar una carpeta\n");
             }
         } catch (Exception e) {
             errorsBox.appendText(e.getMessage() + '\n');
@@ -72,11 +72,11 @@ public class EasyBackupController implements TaskListener {
     private void onTargetSearchButtonClick() {
         try {
             Window window = mainPanel.getScene().getWindow();
-            File selectedFolder = dirChooser.showDialog(window);
-            if (selectedFolder != null) {
-                targetPath.setText(selectedFolder.getPath());
-                TreeItem<String> root = new TreeItem<>(selectedFolder.getName());
-                listFilesThread = new ListFilesThread(selectedFolder.listFiles(), root, 1);
+            File selectedFile = dirChooser.showDialog(window);
+            if (selectedFile != null && selectedFile.isDirectory()) {
+                targetPath.setText(selectedFile.getPath());
+                TreeItem<String> root = new TreeItem<>(selectedFile.getName());
+                listFilesThread = new ListFilesThread(selectedFile.listFiles(), root, 1);
                 listFilesThread.setListener(this);
                 listFilesThread.start();
             } else {
@@ -100,24 +100,22 @@ public class EasyBackupController implements TaskListener {
                 String defaultFolderName = "Respaldo de CD " + originFolder.getName();
                 Dialog<Pair<String, Boolean>> copyConfirmationDialog = CopyConfirmationDialog.createDialog(defaultFolderName, sizeText, filesInOrigin);
                 Optional<Pair<String, Boolean>> dialogResult = copyConfirmationDialog.showAndWait();
-                progressBarUpdateTimer = new Timer();
-                progressBarUpdateTimer.schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        Platform.runLater(() -> {
-                            int elementsCopied = CopyThread.getFilesCopiedValue();
-                            double progress = (double) elementsCopied / filesInOrigin;
-                            copyProgressBar.setProgress(progress);
-                        });
-                    }
-                }, 0, 10);
                 dialogResult.ifPresent(result -> {
                     // COPIAR
                     copyThread = new CopyThread(originFolder, targetFolder, result.getKey(), result.getValue());
                     copyThread.setListener(this);
                     copyThread.start();
+                    CopyThread.getFilesCopiedProperty().addListener(new ChangeListener<Number>() {
+                        @Override
+                        public void changed(ObservableValue<? extends Number> observableValue, Number oldNumber, Number newNumber) {
+                            Platform.runLater(() -> {
+                                double progress = newNumber.doubleValue() / filesInOrigin;
+                                copyProgressBar.setProgress(progress);
+                                progressBarLabel.setText("Progreso: " + newNumber.intValue() + " elementos copiados.");
+                            });
+                        }
+                    });
                 });
-
             } else {
                 Alert errorAlert = new Alert(Alert.AlertType.ERROR);
                 errorAlert.setTitle("Error!");
@@ -139,7 +137,7 @@ public class EasyBackupController implements TaskListener {
             File[] filesInTargetArray = new File(targetPath.getText()).listFiles();
             if ((filesInOriginArray != null && filesInTargetArray != null)
                     && (filesInOriginArray.length > 0 && filesInTargetArray.length > 0)) {
-                checkFilesThread = new CheckFilesThread(filesInOriginArray, filesInTargetArray);
+                CheckFilesThread checkFilesThread = new CheckFilesThread(filesInOriginArray, filesInTargetArray);
                 checkFilesThread.setListener(this);
                 checkFilesThread.start();
             } else {
@@ -149,7 +147,7 @@ public class EasyBackupController implements TaskListener {
                     throw new Exception("La ruta de destino no hace referencia a un directorio.");
                 } else if (filesInOriginArray.length == 0) {
                     throw new Exception("El directorio de origen no contiene elementos.");
-                } else if (filesInTargetArray.length == 0) {
+                } else {
                     throw new Exception("El directorio de destino no contiene elementos.");
                 }
             }
@@ -219,8 +217,6 @@ public class EasyBackupController implements TaskListener {
 
     private void onFinishCopyThread(boolean executionResult, CopyThread copyThread) {
         try {
-            progressBarUpdateTimer.cancel();
-            progressBarUpdateTimer.purge();
             Alert copyResult = new Alert(Alert.AlertType.INFORMATION);
             copyResult.setTitle("Copy result information");
             copyResult.setHeaderText("Information about the copy process");
@@ -240,6 +236,7 @@ public class EasyBackupController implements TaskListener {
             listFilesThread.start();
             copyResult.showAndWait();
             copyProgressBar.setProgress(0);
+            progressBarLabel.setText("Progreso: ");
         } catch (Exception e) {
             errorsBox.appendText(e.getMessage() + '\n');
         }
@@ -284,7 +281,7 @@ public class EasyBackupController implements TaskListener {
 
     @Override
     public void appendErrors(String error) {
-        errorsBox.appendText(error);
+        errorsBox.appendText(error + '\n');
     }
 
 }

@@ -11,7 +11,7 @@ public class EasyBackup extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(EasyBackup.class.getResource("easybackup-view.fxml"));
-        Scene scene = new Scene(fxmlLoader.load(), 800, 600);
+        Scene scene = new Scene(fxmlLoader.load());
         stage.setTitle("EasyBackup");
         stage.setScene(scene);
         stage.setResizable(false);
