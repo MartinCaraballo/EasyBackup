@@ -50,7 +50,7 @@ public class CheckFilesThread extends NotificationThread {
                 }
             }
         } catch (Exception e) {
-            getListener().appendErrors("Errores durante la conversión de array a mapa en el hilo de checkeo:\n" + e.getMessage() + '\n');
+            getListener().appendErrors("Errores durante la conversión de array a mapa en el hilo de checkeo:\n" + e.getMessage());
         }
     }
 
@@ -79,7 +79,7 @@ public class CheckFilesThread extends NotificationThread {
                 throw new Exception("No se pudo realizar el checkeo ya que no existen archivos en el destino.");
             }
         } catch (Exception e) {
-            getListener().appendErrors(e.getMessage() + '\n');
+            getListener().appendErrors(e.getMessage());
         }
         return false;
     }

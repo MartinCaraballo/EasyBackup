@@ -76,7 +76,7 @@ public class ListFilesThread extends NotificationThread {
             }
             return true;
         } catch (Exception e) {
-            getListener().appendErrors(e.getMessage() + '\n');
+            getListener().appendErrors(e.getMessage());
         }
         return false;
     }

@@ -61,10 +61,10 @@ public class EasyBackupController implements TaskListener {
                 listFilesThread.setListener(this);
                 listFilesThread.start();
             } else {
-                errorsBox.appendText("Se debe seleccionar una carpeta\n");
+                appendErrors("Se debe seleccionar una carpeta\n");
             }
         } catch (Exception e) {
-            errorsBox.appendText(e.getMessage() + '\n');
+            appendErrors(e.getMessage());
         }
     }
 
@@ -83,7 +83,7 @@ public class EasyBackupController implements TaskListener {
                 errorsBox.appendText("La carpeta seleccionada no existe.\n");
             }
         } catch (Exception e) {
-            errorsBox.appendText(e.getMessage() + '\n');
+            appendErrors(e.getMessage());
         }
     }
 
@@ -105,16 +105,17 @@ public class EasyBackupController implements TaskListener {
                     copyThread = new CopyThread(originFolder, targetFolder, result.getKey(), result.getValue());
                     copyThread.setListener(this);
                     copyThread.start();
-                    CopyThread.getFilesCopiedProperty().addListener(new ChangeListener<Number>() {
-                        @Override
-                        public void changed(ObservableValue<? extends Number> observableValue, Number oldNumber, Number newNumber) {
-                            Platform.runLater(() -> {
-                                double progress = newNumber.doubleValue() / filesInOrigin;
-                                copyProgressBar.setProgress(progress);
-                                progressBarLabel.setText("Progreso: " + newNumber.intValue() + " elementos copiados.");
-                            });
-                        }
-                    });
+                });
+                CopyThread.getFilesCopiedProperty().addListener(new ChangeListener<Number>() {
+                    @Override
+                    public void changed(ObservableValue<? extends Number> observableValue, Number oldNumber, Number newNumber) {
+                        Platform.runLater(() -> {
+                            int elementsCopied = CopyThread.getFilesCopiedValue();
+                            double progress = (double) elementsCopied / filesInOrigin;
+                            copyProgressBar.setProgress(progress);
+                            progressBarLabel.setText("Progreso: " + elementsCopied + " elementos copiados.");
+                        });
+                    }
                 });
             } else {
                 Alert errorAlert = new Alert(Alert.AlertType.ERROR);
@@ -124,7 +125,7 @@ public class EasyBackupController implements TaskListener {
                 errorAlert.show();
             }
         } catch (Exception e) {
-            errorsBox.appendText(e.getMessage() + '\n');
+            appendErrors(e.getMessage());
         }
     }
 
@@ -152,7 +153,7 @@ public class EasyBackupController implements TaskListener {
                 }
             }
         } catch (Exception e) {
-            errorsBox.appendText(e.getMessage() + '\n');
+            appendErrors(e.getMessage());
         }
     }
 
@@ -173,7 +174,7 @@ public class EasyBackupController implements TaskListener {
                 }
             }
         } catch (Exception e) {
-            errorsBox.appendText(e.getMessage() + '\n');
+            appendErrors(e.getMessage());
         }
     }
 
@@ -194,7 +195,7 @@ public class EasyBackupController implements TaskListener {
                 }
             }
         } catch (Exception e) {
-            errorsBox.appendText(e.getMessage() + '\n');
+            appendErrors(e.getMessage());
         }
     }
 
@@ -211,7 +212,7 @@ public class EasyBackupController implements TaskListener {
                 }
             });
         } catch (Exception e) {
-            errorsBox.appendText(e.getMessage() + '\n');
+            appendErrors(e.getMessage());
         }
     }
 
@@ -238,24 +239,28 @@ public class EasyBackupController implements TaskListener {
             copyProgressBar.setProgress(0);
             progressBarLabel.setText("Progreso: ");
         } catch (Exception e) {
-            errorsBox.appendText(e.getMessage() + '\n');
+            appendErrors(e.getMessage());
         }
     }
 
     private void onFinishListFilesThread(ListFilesThread threadObject) {
-        boolean isOriginFilesView = threadObject.getViewIndex() == 0;
-        if (isOriginFilesView) {
-            backupSize = threadObject.getBackupSize();
-            originFileList.setRoot(threadObject.getTreeViewRoot());
-            int foldersCount = threadObject.getFoldersCount();
-            int filesCount = threadObject.getFilesCount();
-            originFilesCountLabel.setText("Carpetas: " + foldersCount + " | Archivos: " + filesCount);
-            filesInOrigin = filesCount;
-        } else {
-            int foldersCount = threadObject.getFoldersCount();
-            int filesCount = threadObject.getFilesCount();
-            targetFileList.setRoot(threadObject.getTreeViewRoot());
-            targetFilesCountLabel.setText("Carpetas: " + foldersCount + " | Archivos: " + filesCount);
+        try {
+            boolean isOriginFilesView = threadObject.getViewIndex() == 0;
+            if (isOriginFilesView) {
+                backupSize = threadObject.getBackupSize();
+                originFileList.setRoot(threadObject.getTreeViewRoot());
+                int foldersCount = threadObject.getFoldersCount();
+                int filesCount = threadObject.getFilesCount();
+                originFilesCountLabel.setText("Carpetas: " + foldersCount + " | Archivos: " + filesCount);
+                filesInOrigin = filesCount;
+            } else {
+                int foldersCount = threadObject.getFoldersCount();
+                int filesCount = threadObject.getFilesCount();
+                targetFileList.setRoot(threadObject.getTreeViewRoot());
+                targetFilesCountLabel.setText("Carpetas: " + foldersCount + " | Archivos: " + filesCount);
+            }
+        } catch (Exception e) {
+            appendErrors(e.getMessage());
         }
     }
 
@@ -275,13 +280,15 @@ public class EasyBackupController implements TaskListener {
                 finishCheckAlert.show();
             }
         } catch (Exception e) {
-            errorsBox.appendText(e.getMessage() + '\n');
+            appendErrors(e.getMessage());
         }
     }
 
     @Override
     public void appendErrors(String error) {
-        errorsBox.appendText(error + '\n');
+        Platform.runLater(() -> {
+            errorsBox.appendText(error + '\n');
+        });
     }
 
 }

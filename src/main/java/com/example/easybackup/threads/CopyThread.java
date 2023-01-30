@@ -97,7 +97,7 @@ public class CopyThread extends NotificationThread {
             }
 
         } catch (Exception e) {
-            getListener().appendErrors(e.getMessage() + '\n');
+            getListener().appendErrors(e.getMessage());
         }
         return false;
     }
@@ -125,9 +125,9 @@ public class CopyThread extends NotificationThread {
                             copyFilesSeparated(fileFiles, targetFolder, file.getName());
                         } else {
                             if (fileFiles == null) {
-                                getListener().appendErrors("No se copió el archivo ubicado en {" + originFile.getPath() + "} porque no es un directorio.");
+                                getListener().appendErrors("No se copió el archivo {" + file.getPath() + "} porque no es un directorio.");
                             } else {
-                                getListener().appendErrors("No se copió la carpeta ubicada en {" + originFile.getPath() + "} porque está vacía.");
+                                getListener().appendErrors("No se copió la carpeta {" + file.getPath() + "} porque está vacía.");
                             }
                         }
                     } else {
@@ -174,7 +174,7 @@ public class CopyThread extends NotificationThread {
                 throw new Exception("No se pudo crear la carpeta \"" + targetFolder.getName() + "\" en {" + targetFolder.getPath() + "}.");
             }
         } catch (Exception e) {
-            getListener().appendErrors(e.getMessage() + '\n');
+            getListener().appendErrors(e.getMessage());
         }
         return false;
     }
